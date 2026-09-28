@@ -1,0 +1,8 @@
+{
+  "name": "Netflix Replica V1",
+  "description": "A full-stack streaming platform with cinematic UI, JWT authentication, multi-user profiles, video playback, watch history, recommendations, notifications, simulated subscriptions, and interactive technical architecture walkthrough.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

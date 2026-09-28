@@ -6,46 +6,42 @@ import { MONGODB_URI } from './env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_FILE = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME 
+  ? path.join('/tmp', 'netflix_db.json') 
+  : path.join(__dirname, 'db.json');
 
 let isConnected = false;
+let cachedPromise = null;
 
 // In-memory / file fallback store
 function initDb() {
-  if (!fs.existsSync(DB_FILE)) {
-    const initialData = {
-      users: [],
-      profiles: [],
-      movies: [],
-      tvshows: [],
-      episodes: [],
-      watchlists: [],
-      watchhistories: [],
-      playbacks: [],
-      notifications: [],
-      genres: []
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
-    return initialData;
-  }
+  const initialData = {
+    users: [],
+    profiles: [],
+    movies: [],
+    tvshows: [],
+    episodes: [],
+    watchlists: [],
+    watchhistories: [],
+    playbacks: [],
+    notifications: [],
+    genres: []
+  };
+
   try {
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    if (fs.existsSync(DB_FILE)) {
+      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    }
   } catch (err) {
-    const initialData = {
-      users: [],
-      profiles: [],
-      movies: [],
-      tvshows: [],
-      episodes: [],
-      watchlists: [],
-      watchhistories: [],
-      playbacks: [],
-      notifications: [],
-      genres: []
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
-    return initialData;
+    // If read fails, fallback to fresh initialData
   }
+
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
+  } catch (err) {
+    // Ignore write error on read-only systems
+  }
+  return initialData;
 }
 
 export const dbData = initDb();
@@ -54,29 +50,44 @@ export function saveDb() {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(dbData, null, 2));
   } catch (err) {
-    console.error('Error saving local DB file:', err);
+    // Silently continue with in-memory dbData if disk is read-only
   }
 }
 
 export const isDbConnected = () => isConnected || mongoose.connection.readyState === 1;
 
 export const dbConnect = async () => {
+  if (mongoose.connection.readyState === 1) {
+    isConnected = true;
+    return mongoose.connection;
+  }
+
+  if (cachedPromise) {
+    return cachedPromise;
+  }
+
   const uri = process.env.MONGODB_URI || MONGODB_URI;
 
   if (!uri) {
-    throw new Error('MONGODB_URI environment variable is required');
+    isConnected = false;
+    return null;
   }
 
-  try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 2000
-    });
+  cachedPromise = mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 2500,
+    bufferCommands: false
+  }).then(conn => {
     isConnected = true;
     console.log(`Connected to MongoDB successfully: ${mongoose.connection.host || 'database'}`);
-  } catch (error) {
+    return conn;
+  }).catch(error => {
     isConnected = false;
+    cachedPromise = null;
     console.warn(`MongoDB server connection notice (${error.message}). Using local database store.`);
-  }
+    return null;
+  });
+
+  return cachedPromise;
 };
 
 export class MockModel {

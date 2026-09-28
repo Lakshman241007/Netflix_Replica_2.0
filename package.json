@@ -12,9 +12,11 @@
     "dev": "tsx server/server.js",
     "seed": "node server/src/seed/seedDatabase.js",
     "test": "node --test tests/api.test.js",
-    "build": "npm run build --workspace=client && npm run build --workspace=admin",
-    "start": "node server/server.js",
-    "lint": "eslint client/src admin/src server/src"
+    "build": "npm run build --workspace=client && npm run build --workspace=admin && node scripts/copy-admin.js",
+    "gcp-build": "npm run build",
+    "vercel-build": "npm run build",
+    "start": "node server.js",
+    "lint": "tsc --noEmit"
   },
   "devDependencies": {
     "tsx": "^4.19.1",

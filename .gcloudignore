@@ -1,0 +1,10 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+client/node_modules/
+admin/node_modules/
+server/node_modules/
+.env
+tests/
+*.md

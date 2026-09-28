@@ -54,6 +54,11 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 
+// Unmatched API routes fallback
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ success: false, message: 'API endpoint not found' });
+});
+
 // Bootstrap Database and Seed Data
 dbConnect().then(() => {
   seedDatabase();
